@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUser, FaLock, FaEye, FaEyeSlash, FaArrowLeft, FaSave, FaTimes } from 'react-icons/fa';
+import { FaUser } from 'react-icons/fa';
+import { FormCard, FormField } from '../LoginRegister/FormCard';
+import { authAPI, tokenManager } from '../../services/api';
 import './ChangePassword.css';
 
 const ChangePassword = ({ user }) => {
@@ -100,7 +102,7 @@ const ChangePassword = ({ user }) => {
   };
 
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     const newErrors = validateForm();
@@ -110,12 +112,16 @@ const ChangePassword = ({ user }) => {
       return;
     }
 
-    // Simulate password update
     setIsSubmitting(true);
     
-    // Simulate API call with delay
-    setTimeout(() => {
-      setSuccessMessage('Password changed successfully! Redirecting to profile...');
+    try {
+      // Call backend API for password change
+      await authAPI.changePassword({
+        oldPassword: formData.oldPassword,
+        newPassword: formData.newPassword,
+      });
+      
+      setSuccessMessage('Password changed successfully! Redirecting to login...');
       setFormData({
         username: user?.username || '',
         oldPassword: '',
@@ -123,35 +129,38 @@ const ChangePassword = ({ user }) => {
         confirmPassword: '',
       });
       setErrors({});
-      setIsSubmitting(false);
 
-      // Redirect to profile after 2 seconds
+      // Redirect to login after 2 seconds
       setTimeout(() => {
-        navigate('/profile');
+        // Clear auth data and redirect to login
+        tokenManager.removeToken();
+        localStorage.removeItem('authUser');
+        navigate('/');
       }, 2000);
-    }, 1000);
+      
+    } catch (error) {
+      console.error('Change password error:', error);
+      setErrors({ 
+        general: error.message || 'Failed to change password. Please try again.' 
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // Handle cancel
-  const handleCancel = () => {
-    navigate('/profile');
+  // Check password requirements for visual feedback
+  const getPasswordRequirementStatus = (password) => {
+    return {
+      length: password.length >= 5 && password.length <= 12,
+      uppercase: /[A-Z]/.test(password),
+      special: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)
+    };
   };
 
-  // Check if form is valid for submit button
-  const isFormValid = 
-    formData.username.trim() !== '' &&
-    formData.oldPassword.trim() !== '' &&
-    formData.newPassword.trim() !== '' &&
-    formData.confirmPassword.trim() !== '' &&
-    Object.keys(errors).length === 0;
+  const passwordStatus = getPasswordRequirementStatus(formData.newPassword);
 
   return (
     <div className="change-password-container">
-      {/* Back Button */}
-      <button className="back-button" onClick={handleCancel}>
-        <FaArrowLeft /> Back to Profile
-      </button>
-
       {/* Success Message */}
       {successMessage && (
         <div className="success-message">
@@ -159,154 +168,92 @@ const ChangePassword = ({ user }) => {
         </div>
       )}
 
-      {/* Main Card */}
-      <div className="change-password-card">
-        {/* Header */}
-        <div className="card-header">
-          <h1>Change Password</h1>
-          <p>Update your account password securely</p>
-        </div>
+      {/* Main Content */}
+      <div className="change-password-content">
+        {/* Page Title - Right Aligned */}
+        <h1 className="page-title">Change Password</h1>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="change-password-form">
-          {/* Username Field */}
-          <div className="form-group">
-            <label htmlFor="username">Username</label>
-            <div className="input-wrapper">
-              <FaUser className="input-icon" />
-              <input
-                id="username"
-                type="text"
-                name="username"
-                value={formData.username}
-                onChange={handleInputChange}
-                placeholder="Username"
-                readOnly
-              />
+        {/* Form Card - Same as Registration */}
+        <FormCard
+          title=""
+          onSubmit={handleSubmit}
+          submitText={isSubmitting ? 'Saving...' : 'SAVE'}
+          className="change-password-form-card"
+        >
+          {/* General Error Message */}
+          {errors.general && (
+            <div className="general-error-message">
+              {errors.general}
             </div>
-            {errors.username && (
-              <span className="error-message">{errors.username}</span>
-            )}
-          </div>
+          )}
+          
+          <FormField
+            label="Username"
+            name="username"
+            value={formData.username}
+            onChange={handleInputChange}
+            placeholder="Enter username"
+            icon={FaUser}
+            error={errors.username}
+            className={`${user ? 'readonly-field' : ''} custom-field-styling`}
+          />
 
-          {/* Old Password Field */}
-          <div className="form-group">
-            <label htmlFor="oldPassword">Old Password</label>
-            <div className="input-wrapper">
-              <FaLock className="input-icon" />
-              <input
-                id="oldPassword"
-                type={showOldPassword ? 'text' : 'password'}
-                name="oldPassword"
-                value={formData.oldPassword}
-                onChange={handleInputChange}
-                placeholder="Enter your current password"
-              />
-              <button
-                type="button"
-                className="eye-toggle-btn"
-                onClick={() => setShowOldPassword(!showOldPassword)}
-                title={showOldPassword ? 'Hide password' : 'Show password'}
-              >
-                {showOldPassword ? <FaEyeSlash /> : <FaEye />}
-              </button>
-            </div>
-            {errors.oldPassword && (
-              <span className="error-message">{errors.oldPassword}</span>
-            )}
-          </div>
+          <FormField
+            label="Old Password"
+            name="oldPassword"
+            value={formData.oldPassword}
+            onChange={handleInputChange}
+            placeholder="Enter current password"
+            error={errors.oldPassword}
+            showPassword={showOldPassword}
+            onTogglePassword={() => setShowOldPassword(!showOldPassword)}
+            className="custom-field-styling"
+          />
 
-          {/* New Password Field */}
-          <div className="form-group">
-            <label htmlFor="newPassword">New Password</label>
-            <div className="input-wrapper">
-              <FaLock className="input-icon" />
-              <input
-                id="newPassword"
-                type={showNewPassword ? 'text' : 'password'}
-                name="newPassword"
-                value={formData.newPassword}
-                onChange={handleInputChange}
-                placeholder="Enter new password"
-              />
-              <button
-                type="button"
-                className="eye-toggle-btn"
-                onClick={() => setShowNewPassword(!showNewPassword)}
-                title={showNewPassword ? 'Hide password' : 'Show password'}
-              >
-                {showNewPassword ? <FaEyeSlash /> : <FaEye />}
-              </button>
-            </div>
-            {errors.newPassword && (
-              <span className="error-message">{errors.newPassword}</span>
-            )}
-            {/* Password Requirements */}
-            <div className="requirements">
-              <p className="requirements-title">Password Requirements:</p>
-              <ul className="requirements-list">
-                <li className={formData.newPassword.length >= 5 && formData.newPassword.length <= 12 ? 'valid' : ''}>
-                  5–12 characters
-                </li>
-                <li className={/[A-Z]/.test(formData.newPassword) ? 'valid' : ''}>
-                  At least 1 uppercase letter
-                </li>
-                <li className={/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(formData.newPassword) ? 'valid' : ''}>
-                  At least 1 special character
-                </li>
-              </ul>
-            </div>
-          </div>
+          <FormField
+            label="New Password"
+            name="newPassword"
+            value={formData.newPassword}
+            onChange={handleInputChange}
+            placeholder="Enter new password"
+            error={errors.newPassword}
+            showPassword={showNewPassword}
+            onTogglePassword={() => setShowNewPassword(!showNewPassword)}
+            className="custom-field-styling"
+          />
 
-          {/* Confirm Password Field */}
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm New Password</label>
-            <div className="input-wrapper">
-              <FaLock className="input-icon" />
-              <input
-                id="confirmPassword"
-                type={showConfirmPassword ? 'text' : 'password'}
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleInputChange}
-                placeholder="Confirm new password"
-              />
-              <button
-                type="button"
-                className="eye-toggle-btn"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                title={showConfirmPassword ? 'Hide password' : 'Show password'}
-              >
-                {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
-              </button>
+          {/* Password Requirements */}
+          {formData.newPassword && (
+            <div className="password-requirements">
+              <div className={`requirement ${passwordStatus.length ? 'valid' : ''}`}>
+                5–12 characters
+              </div>
+              <div className={`requirement ${passwordStatus.uppercase ? 'valid' : ''}`}>
+                Minimum 1 uppercase letter
+              </div>
+              <div className={`requirement ${passwordStatus.special ? 'valid' : ''}`}>
+                Minimum 1 special character
+              </div>
             </div>
-            {errors.confirmPassword && (
-              <span className="error-message">{errors.confirmPassword}</span>
-            )}
-            {formData.newPassword && formData.confirmPassword && formData.newPassword === formData.confirmPassword && (
-              <span className="success-check">✓ Passwords match</span>
-            )}
-          </div>
+          )}
 
-          {/* Action Buttons */}
-          <div className="button-group">
-            <button
-              type="submit"
-              className="save-btn"
-              disabled={!isFormValid || isSubmitting}
-            >
-              <FaSave /> {isSubmitting ? 'Updating...' : 'Update Password'}
-            </button>
-            <button
-              type="button"
-              className="cancel-btn"
-              onClick={handleCancel}
-              disabled={isSubmitting}
-            >
-              <FaTimes /> Cancel
-            </button>
-          </div>
-        </form>
+          <FormField
+            label="Confirm Password"
+            name="confirmPassword"
+            value={formData.confirmPassword}
+            onChange={handleInputChange}
+            placeholder="Confirm new password"
+            error={errors.confirmPassword}
+            showPassword={showConfirmPassword}
+            onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
+            className="custom-field-styling"
+          />
+
+          {/* Password Match Indicator */}
+          {formData.newPassword && formData.confirmPassword && formData.newPassword === formData.confirmPassword && (
+            <span className="success-check">✓ Passwords match</span>
+          )}
+        </FormCard>
       </div>
     </div>
   );

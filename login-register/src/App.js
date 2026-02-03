@@ -6,6 +6,7 @@ import Dashboard from './Components/Dashboard/Dashboard';
 import UserProfile from './Components/UserProfile/UserProfile';
 import ChangePassword from './Components/ChangePassword/ChangePassword';
 import PrivateRoute from './Components/PrivateRoute/PrivateRoute';
+import { tokenManager } from './services/api';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -14,7 +15,9 @@ function App() {
   // Check if user is already logged in on mount
   useEffect(() => {
     const authUser = localStorage.getItem('authUser');
-    if (authUser) {
+    const token = tokenManager.getToken();
+    
+    if (authUser && token) {
       try {
         const userData = JSON.parse(authUser);
         setUser(userData);
@@ -22,6 +25,7 @@ function App() {
       } catch (error) {
         console.error('Error parsing auth user:', error);
         localStorage.removeItem('authUser');
+        tokenManager.removeToken();
       }
     }
   }, []);
@@ -34,6 +38,8 @@ function App() {
   const handleLogout = () => {
     setUser(null);
     setIsAuthenticated(false);
+    tokenManager.removeToken();
+    localStorage.removeItem('authUser');
   };
 
   return (
@@ -65,11 +71,7 @@ function App() {
         />
         <Route
           path="/change-password"
-          element={
-            <PrivateRoute isAuthenticated={isAuthenticated}>
-              <ChangePassword user={user} />
-            </PrivateRoute>
-          }
+          element={<ChangePassword user={user} />}
         />
       </Routes>
     </Router>
