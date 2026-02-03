@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUser } from 'react-icons/fa';
+import { FaUser, FaArrowLeft } from 'react-icons/fa';
 import { FormCard, FormField } from '../LoginRegister/FormCard';
 import { authAPI, tokenManager } from '../../services/api';
 import './ChangePassword.css';
@@ -161,6 +161,16 @@ const ChangePassword = ({ user }) => {
 
   return (
     <div className="change-password-container">
+      {/* Back to Login Button */}
+      <button 
+        className="back-to-login-btn"
+        onClick={() => navigate('/')}
+        type="button"
+      >
+        <FaArrowLeft className="back-icon" />
+        Back to Login
+      </button>
+
       {/* Success Message */}
       {successMessage && (
         <div className="success-message">
