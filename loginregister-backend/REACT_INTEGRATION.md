@@ -1,5 +1,127 @@
+# React Frontend Integration Guide
+
+## 🔗 Connecting React Frontend to Spring Boot Backend
+
+This guide will help you integrate your React login/register application with the Spring Boot backend.
+
+## 1. Backend API Configuration
+
+### Base URL Setup
+
+Create a file `src/services/api.js` in your React project:
+
+```javascript
+import axios from 'axios';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add JWT token to requests
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Handle responses
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('authToken');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default api;
+```
+
+### Environment Configuration
+
+Create `.env` in your React project root:
+
+```env
+REACT_APP_API_URL=http://localhost:8080/api
+REACT_APP_JWT_TOKEN_KEY=authToken
+```
+
+## 2. Authentication Service
+
+Create `src/services/authService.js`:
+
+```javascript
+import api from './api';
+
+const authService = {
+  // Register
+  register: async (userData) => {
+    const response = await api.post('/auth/register', userData);
+    if (response.data.token) {
+      localStorage.setItem('authToken', response.data.token);
+      localStorage.setItem('authUser', JSON.stringify(response.data));
+    }
+    return response.data;
+  },
+
+  // Login
+  login: async (username, password) => {
+    const response = await api.post('/auth/login', { username, password });
+    if (response.data.token) {
+      localStorage.setItem('authToken', response.data.token);
+      localStorage.setItem('authUser', JSON.stringify(response.data));
+    }
+    return response.data;
+  },
+
+  // Logout
+  logout: () => {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authUser');
+  },
+
+  // Forgot Password
+  forgotPassword: async (forgotPasswordData) => {
+    return await api.post('/auth/forgot-password', forgotPasswordData);
+  },
+
+  // Change Password
+  changePassword: async (passwordData) => {
+    return await api.post('/auth/change-password', passwordData);
+  },
+
+  // Get current user
+  getCurrentUser: () => {
+    const user = localStorage.getItem('authUser');
+    return user ? JSON.parse(user) : null;
+  },
+
+  // Check if user is authenticated
+  isAuthenticated: () => {
+    return !!localStorage.getItem('authToken');
+  },
+};
+
+export default authService;
+```
+
+## 3. Update LoginRegister Component
+
+Update your `LoginRegister.jsx` to use the backend:
+
+```javascript
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import authService from '../services/authService';
 import './LoginRegister.css';
 import { FaUser, FaLock, FaEye, FaEyeSlash, FaPhone, FaCalendar } from 'react-icons/fa';
 
@@ -14,6 +136,7 @@ const LoginRegister = ({ onLoginSuccess }) => {
   });
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginErrors, setLoginErrors] = useState({});
+  const [loginLoading, setLoginLoading] = useState(false);
   
   // Register state
   const [registerData, setRegisterData] = useState({
@@ -22,13 +145,14 @@ const LoginRegister = ({ onLoginSuccess }) => {
     dateOfBirth: '',
     password: '',
     confirmPassword: '',
-    securityQuestion1: '',
-    securityQuestion2: '',
-    securityQuestion3: '',
+    favoriteColor: '',
+    nickName: '',
+    petName: '',
   });
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
   const [registerErrors, setRegisterErrors] = useState({});
+  const [registerLoading, setRegisterLoading] = useState(false);
 
   // Login handlers
   const handleLoginChange = (e) => {
@@ -56,7 +180,7 @@ const LoginRegister = ({ onLoginSuccess }) => {
     return errors;
   };
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     const errors = validateLogin();
     if (Object.keys(errors).length > 0) {
@@ -64,19 +188,20 @@ const LoginRegister = ({ onLoginSuccess }) => {
       return;
     }
     
-    // Simulate successful login - store user data
-    const userData = { 
-      username: loginData.username,
-      phoneNumber: '',
-      dateOfBirth: ''
-    };
-    localStorage.setItem('authUser', JSON.stringify(userData));
-    onLoginSuccess(userData);
-    
-    // Clear form and redirect
-    setLoginData({ username: '', password: '' });
-    setLoginErrors({});
-    navigate('/dashboard');
+    try {
+      setLoginLoading(true);
+      const response = await authService.login(loginData.username, loginData.password);
+      onLoginSuccess(response);
+      setLoginData({ username: '', password: '' });
+      setLoginErrors({});
+      navigate('/dashboard');
+    } catch (error) {
+      setLoginErrors({
+        submit: error.response?.data?.message || 'Login failed. Please try again.'
+      });
+    } finally {
+      setLoginLoading(false);
+    }
   };
 
   // Register handlers
@@ -97,24 +222,20 @@ const LoginRegister = ({ onLoginSuccess }) => {
   const validateRegister = () => {
     const errors = {};
     
-    // Username validation
     if (!registerData.username.trim()) {
       errors.username = 'Username is required';
     }
     
-    // Phone number validation
     if (!registerData.phoneNumber.trim()) {
       errors.phoneNumber = 'Phone number is required';
     } else if (!/^\d{10}$/.test(registerData.phoneNumber)) {
       errors.phoneNumber = 'Phone number must be exactly 10 digits';
     }
     
-    // Date of Birth validation
     if (!registerData.dateOfBirth.trim()) {
       errors.dateOfBirth = 'Date of Birth is required';
     }
     
-    // Password validation
     if (!registerData.password.trim()) {
       errors.password = 'Password is required';
     } else {
@@ -130,28 +251,26 @@ const LoginRegister = ({ onLoginSuccess }) => {
       }
     }
     
-    // Confirm Password validation
     if (!registerData.confirmPassword.trim()) {
       errors.confirmPassword = 'Confirm Password is required';
     } else if (registerData.password !== registerData.confirmPassword) {
       errors.confirmPassword = 'Passwords do not match';
     }
     
-    // Security Questions validation
-    if (!registerData.securityQuestion1.trim()) {
-      errors.securityQuestion1 = 'This field is required';
+    if (!registerData.favoriteColor.trim()) {
+      errors.favoriteColor = 'Favorite color is required';
     }
-    if (!registerData.securityQuestion2.trim()) {
-      errors.securityQuestion2 = 'This field is required';
+    if (!registerData.nickName.trim()) {
+      errors.nickName = 'Nick name is required';
     }
-    if (!registerData.securityQuestion3.trim()) {
-      errors.securityQuestion3 = 'This field is required';
+    if (!registerData.petName.trim()) {
+      errors.petName = 'Pet name is required';
     }
     
     return errors;
   };
 
-  const handleRegisterSubmit = (e) => {
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     const errors = validateRegister();
     if (Object.keys(errors).length > 0) {
@@ -159,31 +278,30 @@ const LoginRegister = ({ onLoginSuccess }) => {
       return;
     }
     
-    // Store registered user data
-    const userData = {
-      username: registerData.username,
-      phoneNumber: registerData.phoneNumber,
-      dateOfBirth: registerData.dateOfBirth
-    };
-    localStorage.setItem('authUser', JSON.stringify(userData));
-    onLoginSuccess(userData);
-    
-    // Show success message
-    alert(`Registration successful!\nUsername: ${registerData.username}\nPhone: ${registerData.phoneNumber}\nDOB: ${registerData.dateOfBirth}`);
-    
-    // Clear form and redirect
-    setRegisterData({ 
-      username: '', 
-      phoneNumber: '', 
-      dateOfBirth: '', 
-      password: '', 
-      confirmPassword: '',
-      securityQuestion1: '',
-      securityQuestion2: '',
-      securityQuestion3: '',
-    });
-    setRegisterErrors({});
-    navigate('/dashboard');
+    try {
+      setRegisterLoading(true);
+      const response = await authService.register(registerData);
+      onLoginSuccess(response);
+      setRegisterData({
+        username: '',
+        phoneNumber: '',
+        dateOfBirth: '',
+        password: '',
+        confirmPassword: '',
+        favoriteColor: '',
+        nickName: '',
+        petName: '',
+      });
+      setRegisterErrors({});
+      navigate('/dashboard');
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.validationErrors?.username ||
+                          'Registration failed. Please try again.';
+      setRegisterErrors({ submit: errorMessage });
+    } finally {
+      setRegisterLoading(false);
+    }
   };
 
   return (
@@ -212,6 +330,11 @@ const LoginRegister = ({ onLoginSuccess }) => {
         {activeTab === 'login' && (
           <div className="form-wrapper login-form">
             <h2>Login</h2>
+            {loginErrors.submit && (
+              <div className="error-message" style={{ textAlign: 'center', marginBottom: '15px' }}>
+                {loginErrors.submit}
+              </div>
+            )}
             <form onSubmit={handleLoginSubmit}>
               {/* Username */}
               <div className="form-group">
@@ -225,6 +348,7 @@ const LoginRegister = ({ onLoginSuccess }) => {
                     placeholder="Enter your username"
                     value={loginData.username}
                     onChange={handleLoginChange}
+                    disabled={loginLoading}
                   />
                 </div>
                 {loginErrors.username && (
@@ -244,6 +368,7 @@ const LoginRegister = ({ onLoginSuccess }) => {
                     placeholder="Enter your password"
                     value={loginData.password}
                     onChange={handleLoginChange}
+                    disabled={loginLoading}
                   />
                   <button
                     type="button"
@@ -270,8 +395,12 @@ const LoginRegister = ({ onLoginSuccess }) => {
               </div>
 
               {/* Login Button */}
-              <button type="submit" className="submit-btn">
-                Login
+              <button 
+                type="submit" 
+                className="submit-btn"
+                disabled={loginLoading}
+              >
+                {loginLoading ? 'Logging in...' : 'Login'}
               </button>
             </form>
           </div>
@@ -281,6 +410,11 @@ const LoginRegister = ({ onLoginSuccess }) => {
         {activeTab === 'register' && (
           <div className="form-wrapper register-form">
             <h2>Register</h2>
+            {registerErrors.submit && (
+              <div className="error-message" style={{ textAlign: 'center', marginBottom: '15px' }}>
+                {registerErrors.submit}
+              </div>
+            )}
             <form onSubmit={handleRegisterSubmit}>
               {/* Username */}
               <div className="form-group">
@@ -294,6 +428,7 @@ const LoginRegister = ({ onLoginSuccess }) => {
                     placeholder="Enter your username"
                     value={registerData.username}
                     onChange={handleRegisterChange}
+                    disabled={registerLoading}
                   />
                 </div>
                 {registerErrors.username && (
@@ -319,6 +454,7 @@ const LoginRegister = ({ onLoginSuccess }) => {
                       });
                     }}
                     maxLength="10"
+                    disabled={registerLoading}
                   />
                 </div>
                 {registerErrors.phoneNumber && (
@@ -337,6 +473,7 @@ const LoginRegister = ({ onLoginSuccess }) => {
                     name="dateOfBirth"
                     value={registerData.dateOfBirth}
                     onChange={handleRegisterChange}
+                    disabled={registerLoading}
                   />
                 </div>
                 {registerErrors.dateOfBirth && (
@@ -356,6 +493,7 @@ const LoginRegister = ({ onLoginSuccess }) => {
                     placeholder="Min 5, Max 12 chars, 1 uppercase, 1 special"
                     value={registerData.password}
                     onChange={handleRegisterChange}
+                    disabled={registerLoading}
                   />
                   <button
                     type="button"
@@ -382,6 +520,7 @@ const LoginRegister = ({ onLoginSuccess }) => {
                     placeholder="Confirm your password"
                     value={registerData.confirmPassword}
                     onChange={handleRegisterChange}
+                    disabled={registerLoading}
                   />
                   <button
                     type="button"
@@ -406,14 +545,15 @@ const LoginRegister = ({ onLoginSuccess }) => {
                   <input
                     id="security-q1"
                     type="text"
-                    name="securityQuestion1"
+                    name="favoriteColor"
                     placeholder="Enter your answer"
-                    value={registerData.securityQuestion1}
+                    value={registerData.favoriteColor}
                     onChange={handleRegisterChange}
                     className="security-input"
+                    disabled={registerLoading}
                   />
-                  {registerErrors.securityQuestion1 && (
-                    <span className="error-message">{registerErrors.securityQuestion1}</span>
+                  {registerErrors.favoriteColor && (
+                    <span className="error-message">{registerErrors.favoriteColor}</span>
                   )}
                 </div>
 
@@ -423,14 +563,15 @@ const LoginRegister = ({ onLoginSuccess }) => {
                   <input
                     id="security-q2"
                     type="text"
-                    name="securityQuestion2"
+                    name="nickName"
                     placeholder="Enter your answer"
-                    value={registerData.securityQuestion2}
+                    value={registerData.nickName}
                     onChange={handleRegisterChange}
                     className="security-input"
+                    disabled={registerLoading}
                   />
-                  {registerErrors.securityQuestion2 && (
-                    <span className="error-message">{registerErrors.securityQuestion2}</span>
+                  {registerErrors.nickName && (
+                    <span className="error-message">{registerErrors.nickName}</span>
                   )}
                 </div>
 
@@ -440,21 +581,26 @@ const LoginRegister = ({ onLoginSuccess }) => {
                   <input
                     id="security-q3"
                     type="text"
-                    name="securityQuestion3"
+                    name="petName"
                     placeholder="Enter your answer"
-                    value={registerData.securityQuestion3}
+                    value={registerData.petName}
                     onChange={handleRegisterChange}
                     className="security-input"
+                    disabled={registerLoading}
                   />
-                  {registerErrors.securityQuestion3 && (
-                    <span className="error-message">{registerErrors.securityQuestion3}</span>
+                  {registerErrors.petName && (
+                    <span className="error-message">{registerErrors.petName}</span>
                   )}
                 </div>
               </div>
 
               {/* Register Button */}
-              <button type="submit" className="submit-btn">
-                Register
+              <button 
+                type="submit" 
+                className="submit-btn"
+                disabled={registerLoading}
+              >
+                {registerLoading ? 'Registering...' : 'Register'}
               </button>
             </form>
           </div>
@@ -465,3 +611,135 @@ const LoginRegister = ({ onLoginSuccess }) => {
 };
 
 export default LoginRegister;
+```
+
+## 4. Protected Routes
+
+Create `src/Components/PrivateRoute/PrivateRoute.jsx`:
+
+```javascript
+import React from 'react';
+import { Navigate } from 'react-router-dom';
+import authService from '../../services/authService';
+
+const PrivateRoute = ({ children }) => {
+  return authService.isAuthenticated() ? children : <Navigate to="/login" />;
+};
+
+export default PrivateRoute;
+```
+
+## 5. Update App.js
+
+```javascript
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import LoginRegister from './Components/LoginRegister/LoginRegister';
+import Dashboard from './Components/Dashboard/Dashboard';
+import ForgotPassword from './Components/ForgotPassword/ForgotPassword';
+import UserProfile from './Components/UserProfile/UserProfile';
+import ChangePassword from './Components/ChangePassword/ChangePassword';
+import PrivateRoute from './Components/PrivateRoute/PrivateRoute';
+import authService from './services/authService';
+import './App.css';
+
+function App() {
+  const [user, setUser] = useState(authService.getCurrentUser());
+
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
+  };
+
+  const handleLogout = () => {
+    authService.logout();
+    setUser(null);
+  };
+
+  return (
+    <Router>
+      <Routes>
+        <Route path="/login" element={<LoginRegister onLoginSuccess={handleLoginSuccess} />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route 
+          path="/dashboard" 
+          element={
+            <PrivateRoute>
+              <Dashboard user={user} onLogout={handleLogout} />
+            </PrivateRoute>
+          } 
+        />
+        <Route 
+          path="/profile" 
+          element={
+            <PrivateRoute>
+              <UserProfile user={user} />
+            </PrivateRoute>
+          } 
+        />
+        <Route 
+          path="/change-password" 
+          element={
+            <PrivateRoute>
+              <ChangePassword />
+            </PrivateRoute>
+          } 
+        />
+        <Route path="/" element={<Navigate to="/login" />} />
+      </Routes>
+    </Router>
+  );
+}
+
+export default App;
+```
+
+## 6. Install Required Dependencies
+
+```bash
+npm install axios
+```
+
+## 7. Start Both Applications
+
+### Terminal 1 - React Frontend
+```bash
+cd login-register
+npm start
+```
+
+### Terminal 2 - Spring Boot Backend
+```bash
+cd loginregister-backend
+mvn spring-boot:run
+```
+
+## 8. Test the Integration
+
+1. Open `http://localhost:3000` in your browser
+2. Register a new user
+3. Login with the registered credentials
+4. Access protected routes
+
+## 🔐 Token Storage
+
+The JWT token is stored in `localStorage` as `authToken`. The token is automatically included in all API requests via the axios interceptor.
+
+## 🚨 Important
+
+- Never expose sensitive data in localStorage (client-side)
+- Always validate tokens on the backend
+- Implement token refresh mechanism for production
+- Use httpOnly cookies in production (if possible)
+
+## 📞 Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| CORS Error | Check CORS configuration in SecurityConfig.java |
+| Token not sent | Verify axios interceptor is configured |
+| 401 Unauthorized | Check if token is expired or invalid |
+| API not responding | Ensure Spring Boot backend is running |
+
+---
+
+Your React frontend is now fully integrated with the Spring Boot backend!
