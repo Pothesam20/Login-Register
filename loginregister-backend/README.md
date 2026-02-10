@@ -1,346 +1,369 @@
-# Login Register Backend - Spring Boot with Oracle Database
+# User Profile Dashboard Backend
 
-A comprehensive Spring Boot 3.x backend for authentication and user management system with Oracle Database integration.
-
-## Prerequisites
-
-- Java 17+
-- Maven 3.8+
-- Oracle Database 19c or Oracle XE
-- Git
+A complete Spring Boot backend application for User Profile Dashboard with Oracle Database.
 
 ## Technology Stack
 
-- **Framework**: Spring Boot 3.2.0
-- **Security**: Spring Security 6.x with JWT Authentication
-- **Database**: Oracle 19c / XE
-- **ORM**: Hibernate & Spring Data JPA
-- **Password Encoding**: BCrypt
-- **JWT**: JJWT 0.12.3
-- **Build Tool**: Maven
-- **Code Generation**: Lombok
+- **Java**: 17
+- **Spring Boot**: 3.2.0
+- **Spring Data JPA**: For database operations
+- **Oracle Database**: Primary database
+- **Lombok**: To reduce boilerplate code
+- **Maven**: Build tool
 
 ## Project Structure
 
 ```
 loginregister-backend/
-├── src/main/java/com/auth/
-│   ├── config/              # Spring Security & Application Config
-│   ├── controller/          # REST API Endpoints
-│   ├── service/             # Business Logic
-│   ├── repository/          # Data Access Layer
-│   ├── model/               # Entity Classes
-│   ├── dto/                 # Data Transfer Objects
-│   ├── security/            # JWT & Authentication
-│   └── exception/           # Exception Handling
-├── src/main/resources/
-│   └── application.yml      # Application Configuration
-└── pom.xml                  # Maven Dependencies
+├── src/
+│   ├── main/
+│   │   ├── java/com/userprofile/
+│   │   │   ├── controller/          # REST Controllers
+│   │   │   ├── service/             # Business Logic
+│   │   │   ├── repository/          # Data Access Layer
+│   │   │   ├── entity/              # JPA Entities
+│   │   │   ├── dto/                 # Data Transfer Objects
+│   │   │   ├── enums/               # Enumerations
+│   │   │   ├── exception/           # Exception Handling
+│   │   │   └── UserProfileApplication.java
+│   │   └── resources/
+│   │       ├── application.yml      # Configuration
+│   │       └── db/
+│   │           ├── schema.sql       # Database Schema
+│   │           └── sample-data.sql  # Sample Data
+│   └── test/
+└── pom.xml
 ```
 
-## Database Setup
+## Database Schema
 
-### 1. Create Oracle Sequence
+### Tables
 
+1. **USER_PROFILE**
+   - USER_ID (PK)
+   - FULL_NAME
+   - ROLE
+   - EMAIL (Unique)
+   - LOCATION
+   - WEBSITE
+   - BIO
+   - PROFILE_IMAGE
+   - COVER_IMAGE
+   - CREATED_AT
+
+2. **USER_STATS**
+   - USER_ID (PK, FK)
+   - POSTS
+   - FOLLOWERS
+   - FOLLOWING
+
+3. **USER_POSTS**
+   - POST_ID (PK)
+   - USER_ID (FK)
+   - CONTENT
+   - POST_TYPE (TEXT, IMAGE, VIDEO, ARTICLE)
+   - CREATED_AT
+
+## Setup Instructions
+
+### Prerequisites
+
+- Java 17 or higher
+- Maven 3.6+
+- Oracle Database 11g or higher
+- Oracle JDBC Driver
+
+### Database Setup
+
+1. Create Oracle database user:
 ```sql
-CREATE SEQUENCE USER_SEQ START WITH 1 INCREMENT BY 1;
+CREATE USER userprofile IDENTIFIED BY password;
+GRANT CONNECT, RESOURCE TO userprofile;
+GRANT UNLIMITED TABLESPACE TO userprofile;
 ```
 
-### 2. Create Tablespace (Optional)
-
-```sql
-CREATE TABLESPACE users_ts
-DATAFILE 'users_ts.dbf' SIZE 100M
-AUTOEXTEND ON NEXT 10M;
+2. Run schema creation script:
+```bash
+sqlplus userprofile/password@localhost:1521/ORCL @src/main/resources/db/schema.sql
 ```
 
-### 3. Hibernate will auto-create the USERS table on first run
-
-The application will automatically create the `USERS` table with the following structure:
-
-```sql
-CREATE TABLE USERS (
-    ID NUMBER PRIMARY KEY,
-    USERNAME VARCHAR2(100) NOT NULL UNIQUE,
-    PASSWORD VARCHAR2(255) NOT NULL,
-    PHONE_NUMBER VARCHAR2(20),
-    DATE_OF_BIRTH DATE,
-    FAVORITE_COLOR VARCHAR2(100),
-    NICK_NAME VARCHAR2(100),
-    PET_NAME VARCHAR2(100),
-    ROLE VARCHAR2(50),
-    CREATED_AT TIMESTAMP,
-    UPDATED_AT TIMESTAMP
-);
+3. (Optional) Load sample data:
+```bash
+sqlplus userprofile/password@localhost:1521/ORCL @src/main/resources/db/sample-data.sql
 ```
 
-## Configuration
+### Application Configuration
 
-### Update Oracle Database Credentials
-
-Edit `src/main/resources/application.yml`:
+Update `src/main/resources/application.yml`:
 
 ```yaml
-spring.datasource.url=jdbc:oracle:thin:@your-host:1521:your-db-name
-spring.datasource.username=your-username
-spring.datasource.password=your-password
+spring:
+  datasource:
+    url: jdbc:oracle:thin:@localhost:1521:ORCL
+    username: your_username
+    password: your_password
 ```
 
-### JWT Secret Configuration
-
-Customize the JWT secret in `application.yml`:
-
-```yaml
-app.jwtSecret=your-secret-key-min-32-chars
-app.jwtExpirationMs=86400000  # 24 hours in milliseconds
-```
-
-### CORS Configuration
-
-Update allowed origins in `SecurityConfig.java`:
-
-```java
-configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://your-frontend-url"));
-```
-
-## Building & Running
-
-### Build the Project
+### Build and Run
 
 ```bash
+# Build the project
 mvn clean install
-```
 
-### Run the Application
-
-```bash
+# Run the application
 mvn spring-boot:run
-```
 
-Or using Java:
-
-```bash
-java -jar target/loginregister-backend-1.0.0.jar
+# Or run the JAR
+java -jar target/user-profile-backend-1.0.0.jar
 ```
 
 The application will start on `http://localhost:8080`
 
-## API Endpoints
+## REST API Endpoints
 
-### Authentication Endpoints
+Base URL: `http://localhost:8080/api`
 
-#### 1. Register User
-```http
-POST /api/auth/register
-Content-Type: application/json
+### 1. Get User Profile
 
-{
-  "username": "john_doe",
-  "phoneNumber": "1234567890",
-  "dateOfBirth": "1995-05-20",
-  "password": "Password@123",
-  "confirmPassword": "Password@123",
-  "favoriteColor": "Blue",
-  "nickName": "Johnny",
-  "petName": "Max"
-}
-```
+**Endpoint:** `GET /users/{userId}/profile`
 
-**Response:**
+**Description:** Retrieve user profile information
+
+**Response:** `200 OK`
 ```json
 {
-  "token": "eyJhbGciOiJIUzUxMiJ9...",
-  "type": "Bearer",
-  "id": 1,
-  "username": "john_doe",
-  "phoneNumber": "1234567890",
-  "dateOfBirth": "1995-05-20",
-  "message": "User registered successfully"
+  "userId": 1,
+  "fullName": "John Doe",
+  "role": "Software Developer",
+  "email": "john.doe@example.com",
+  "location": "New York, USA",
+  "website": "www.johndoe.com",
+  "bio": "Passionate developer...",
+  "profileImage": "https://example.com/profile.jpg",
+  "coverImage": "https://example.com/cover.jpg",
+  "createdAt": "2024-01-15T10:30:00"
 }
 ```
 
-#### 2. Login User
-```http
-POST /api/auth/login
-Content-Type: application/json
+### 2. Get User Statistics
 
-{
-  "username": "john_doe",
-  "password": "Password@123"
-}
-```
+**Endpoint:** `GET /users/{userId}/stats`
 
-**Response:**
+**Description:** Retrieve user statistics (posts, followers, following)
+
+**Response:** `200 OK`
 ```json
 {
-  "token": "eyJhbGciOiJIUzUxMiJ9...",
-  "type": "Bearer",
-  "id": 1,
-  "username": "john_doe",
-  "phoneNumber": "1234567890",
-  "dateOfBirth": "1995-05-20",
-  "message": "Login successful"
+  "userId": 1,
+  "posts": 245,
+  "followers": 1289,
+  "following": 456
 }
 ```
 
-#### 3. Forgot Password
-```http
-POST /api/auth/forgot-password
-Content-Type: application/json
+### 3. Get User Dashboard
 
-{
-  "username": "john_doe",
-  "phoneNumber": "1234567890",
-  "favoriteColor": "Blue",
-  "nickName": "Johnny",
-  "petName": "Max",
-  "newPassword": "NewPass@456",
-  "confirmPassword": "NewPass@456"
-}
-```
+**Endpoint:** `GET /users/{userId}/dashboard`
 
-#### 4. Change Password
-```http
-POST /api/auth/change-password
-Authorization: Bearer <JWT_TOKEN>
-Content-Type: application/json
+**Description:** Retrieve complete dashboard data (profile + stats)
 
-{
-  "oldPassword": "Password@123",
-  "newPassword": "NewPass@456",
-  "confirmPassword": "NewPass@456"
-}
-```
-
-### User Endpoints (JWT Protected)
-
-#### 1. Get User Profile
-```http
-GET /api/user/profile
-Authorization: Bearer <JWT_TOKEN>
-```
-
-**Response:**
+**Response:** `200 OK`
 ```json
 {
-  "id": 1,
-  "username": "john_doe",
-  "phoneNumber": "1234567890",
-  "dateOfBirth": "1995-05-20",
-  "favoriteColor": "Blue",
-  "nickName": "Johnny",
-  "petName": "Max"
-}
-```
-
-#### 2. Update User Profile
-```http
-PUT /api/user/profile
-Authorization: Bearer <JWT_TOKEN>
-Content-Type: application/json
-
-{
-  "phoneNumber": "9876543210",
-  "favoriteColor": "Red",
-  "nickName": "Jonathan",
-  "petName": "Buddy"
-}
-```
-
-## Password Requirements
-
-- **Length**: 5-12 characters
-- **Must contain**: At least 1 uppercase letter
-- **Must contain**: At least 1 special character (!@#$%^&*()_+-=[]{};':"\\|,.<>/?`)
-
-## Error Handling
-
-All API endpoints return standardized error responses:
-
-```json
-{
-  "timestamp": "2024-01-31T10:30:00",
-  "status": 400,
-  "error": "Bad Request",
-  "message": "Username already exists",
-  "path": "/api/auth/register",
-  "validationErrors": {
-    "username": "Username must be unique"
+  "profile": {
+    "userId": 1,
+    "fullName": "John Doe",
+    "role": "Software Developer",
+    "email": "john.doe@example.com",
+    "location": "New York, USA",
+    "website": "www.johndoe.com",
+    "bio": "Passionate developer...",
+    "profileImage": "https://example.com/profile.jpg",
+    "coverImage": "https://example.com/cover.jpg",
+    "createdAt": "2024-01-15T10:30:00"
+  },
+  "stats": {
+    "userId": 1,
+    "posts": 245,
+    "followers": 1289,
+    "following": 456
   }
 }
 ```
 
-## Security Features
+### 4. Update User Profile
 
-- ✅ JWT Token-based Authentication
-- ✅ Stateless Session Management
-- ✅ BCrypt Password Encryption
-- ✅ Role-based Access Control (RBAC)
-- ✅ CORS Configuration
-- ✅ Spring Security Filter Chain
-- ✅ Input Validation & Sanitization
-- ✅ Global Exception Handling
+**Endpoint:** `PUT /users/{userId}/profile`
 
-## Testing with Postman
+**Description:** Update user profile information
 
-1. Import the API endpoints from `postman_collection.json` (if available)
-2. Register a new user
-3. Copy the JWT token from the response
-4. Add Authorization header: `Bearer <TOKEN>`
-5. Test protected endpoints
-
-## Production Deployment
-
-### Important Considerations
-
-1. **Change JWT Secret**: Use a strong, unique secret (min 32 characters)
-2. **Update Database Credentials**: Use production database credentials
-3. **Update CORS Origins**: Configure allowed frontend URLs
-4. **Environment Variables**: Use environment variables instead of hardcoding values
-5. **SSL/TLS**: Enable HTTPS in production
-
-### Example Docker Deployment
-
-```dockerfile
-FROM openjdk:17-slim
-COPY target/loginregister-backend-1.0.0.jar app.jar
-ENTRYPOINT ["java", "-jar", "app.jar"]
+**Request Body:**
+```json
+{
+  "fullName": "John Doe",
+  "role": "Senior Software Developer",
+  "location": "San Francisco, USA",
+  "website": "www.johndoe.dev",
+  "bio": "Updated bio text..."
+}
 ```
 
-## Troubleshooting
+**Response:** `200 OK`
+```json
+{
+  "userId": 1,
+  "fullName": "John Doe",
+  "role": "Senior Software Developer",
+  "email": "john.doe@example.com",
+  "location": "San Francisco, USA",
+  "website": "www.johndoe.dev",
+  "bio": "Updated bio text...",
+  "profileImage": "https://example.com/profile.jpg",
+  "coverImage": "https://example.com/cover.jpg",
+  "createdAt": "2024-01-15T10:30:00"
+}
+```
 
-### Oracle Connection Issues
+### 5. Create Post
 
-- Verify Oracle service is running
-- Check database credentials in `application.yml`
-- Ensure Oracle JDBC driver is in classpath (included in pom.xml)
+**Endpoint:** `POST /users/{userId}/posts`
 
-### JWT Token Errors
+**Description:** Create a new post (Share your thoughts)
 
-- Check token format: `Bearer <token>`
-- Verify token hasn't expired
-- Confirm JWT secret matches between generation and validation
+**Request Body:**
+```json
+{
+  "content": "Just completed an amazing project!",
+  "postType": "TEXT"
+}
+```
 
-### Validation Errors
+**Post Types:** `TEXT`, `IMAGE`, `VIDEO`, `ARTICLE`
 
-- Ensure password meets requirements
-- Verify phone number is exactly 10 digits
-- Check date format: `YYYY-MM-DD`
+**Response:** `201 CREATED`
+```json
+{
+  "postId": 1,
+  "userId": 1,
+  "content": "Just completed an amazing project!",
+  "postType": "TEXT",
+  "createdAt": "2024-01-15T14:30:00",
+  "userName": "John Doe"
+}
+```
 
-## Future Enhancements
+### 6. Get User Posts
 
-- [ ] Email verification
-- [ ] Two-factor authentication (2FA)
-- [ ] OAuth2 Integration
-- [ ] Social Login (Google, GitHub)
-- [ ] User Activity Logging
-- [ ] Rate Limiting
-- [ ] API Documentation (Swagger/OpenAPI)
+**Endpoint:** `GET /users/{userId}/posts`
+
+**Description:** Retrieve all posts for a user (ordered by newest first)
+
+**Response:** `200 OK`
+```json
+[
+  {
+    "postId": 3,
+    "userId": 1,
+    "content": "Latest post content...",
+    "postType": "TEXT",
+    "createdAt": "2024-01-15T14:30:00",
+    "userName": "John Doe"
+  },
+  {
+    "postId": 2,
+    "userId": 1,
+    "content": "Previous post content...",
+    "postType": "IMAGE",
+    "createdAt": "2024-01-15T10:00:00",
+    "userName": "John Doe"
+  }
+]
+```
+
+## Error Responses
+
+### 404 Not Found
+```json
+{
+  "status": 404,
+  "message": "User not found with id: 1",
+  "timestamp": "2024-01-15T14:30:00"
+}
+```
+
+### 400 Bad Request (Validation Error)
+```json
+{
+  "fullName": "Full name is required",
+  "bio": "Bio must not exceed 500 characters"
+}
+```
+
+### 500 Internal Server Error
+```json
+{
+  "status": 500,
+  "message": "An unexpected error occurred",
+  "timestamp": "2024-01-15T14:30:00"
+}
+```
+
+## Testing with cURL
+
+### Get User Dashboard
+```bash
+curl -X GET http://localhost:8080/api/users/1/dashboard
+```
+
+### Update Profile
+```bash
+curl -X PUT http://localhost:8080/api/users/1/profile \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fullName": "John Doe",
+    "role": "Senior Developer",
+    "location": "New York",
+    "website": "www.example.com",
+    "bio": "Updated bio"
+  }'
+```
+
+### Create Post
+```bash
+curl -X POST http://localhost:8080/api/users/1/posts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "My new post!",
+    "postType": "TEXT"
+  }'
+```
+
+### Get User Posts
+```bash
+curl -X GET http://localhost:8080/api/users/1/posts
+```
+
+## Features
+
+✅ Layered architecture (Controller → Service → Repository)  
+✅ Spring Data JPA with Oracle Database  
+✅ RESTful API design  
+✅ DTO pattern for clean API responses  
+✅ Input validation with Bean Validation  
+✅ Global exception handling  
+✅ Transaction management  
+✅ Logging with SLF4J  
+✅ CORS enabled for frontend integration  
+✅ Oracle-compatible ID generation strategy  
+✅ Proper HTTP status codes  
+
+## Notes
+
+- **No Password Fields**: As per requirements, this backend does not include any password, change password, or authentication features
+- **Production Ready**: Includes proper error handling, logging, and transaction management
+- **Scalable**: Uses layered architecture for easy maintenance and testing
+- **Database Agnostic**: Can be easily adapted to other databases by changing the dialect
 
 ## License
 
-This project is licensed under the MIT License.
-
-## Support
-
-For issues and questions, please create an issue in the repository.
+MIT License

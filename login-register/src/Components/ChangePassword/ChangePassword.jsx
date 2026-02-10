@@ -1,269 +1,269 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUser, FaArrowLeft } from 'react-icons/fa';
-import { FormCard, FormField } from '../LoginRegister/FormCard';
-import { authAPI, tokenManager } from '../../services/api';
 import './ChangePassword.css';
 
-const ChangePassword = ({ user }) => {
-  const navigate = useNavigate();
-  
-  // Form state
+const ChangePassword = () => {
   const [formData, setFormData] = useState({
-    username: user?.username || '',
     oldPassword: '',
     newPassword: '',
-    confirmPassword: '',
+    confirmPassword: ''
   });
-
-  // Password visibility state
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  // Error and success state
   const [errors, setErrors] = useState({});
-  const [successMessage, setSuccessMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  // Handle form input change
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-    // Clear error for this field when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: '',
-      }));
-    }
-  };
-
-  // Validate password requirements
-  const validatePasswordRequirements = (password) => {
+  const validatePassword = (password) => {
     const errors = [];
-    
-    if (password.length < 5) {
-      errors.push('At least 5 characters');
-    }
-    if (password.length > 12) {
-      errors.push('Maximum 12 characters');
-    }
-    if (!/[A-Z]/.test(password)) {
-      errors.push('At least 1 uppercase letter');
-    }
-    if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
-      errors.push('At least 1 special character');
-    }
-
+    if (password.length < 8) errors.push('Minimum 8 characters');
+    if (password.length > 12) errors.push('Maximum 12 characters');
+    if (!/[A-Z]/.test(password)) errors.push('At least 1 uppercase letter');
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) errors.push('Must be alphanumeric');
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) errors.push('At least 1 special character');
     return errors;
   };
 
-  // Validate form
-  const validateForm = () => {
+  useEffect(() => {
     const newErrors = {};
 
-    // Username validation
-    if (!formData.username.trim()) {
-      newErrors.username = 'Username is required';
-    }
-
-    // Old password validation
-    if (!formData.oldPassword.trim()) {
-      newErrors.oldPassword = 'Current password is required';
-    }
-
-    // New password validation
-    if (!formData.newPassword.trim()) {
-      newErrors.newPassword = 'New password is required';
-    } else {
-      const passwordErrors = validatePasswordRequirements(formData.newPassword);
+    // Validate new password
+    if (formData.newPassword) {
+      const passwordErrors = validatePassword(formData.newPassword);
       if (passwordErrors.length > 0) {
-        newErrors.newPassword = passwordErrors.join(', ');
+        newErrors.newPassword = passwordErrors;
+      }
+
+      // Check if new password is same as old password
+      if (formData.oldPassword && formData.oldPassword === formData.newPassword) {
+        newErrors.samePassword = 'New password must be different from old password';
       }
     }
 
-    // Confirm password validation
-    if (!formData.confirmPassword.trim()) {
-      newErrors.confirmPassword = 'Please confirm your new password';
-    } else if (formData.newPassword !== formData.confirmPassword) {
+    // Validate confirm password
+    if (formData.confirmPassword && formData.newPassword !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
 
-    // Check if old password equals new password
-    if (formData.oldPassword && formData.newPassword && formData.oldPassword === formData.newPassword) {
-      newErrors.newPassword = 'New password must be different from current password';
-    }
+    setErrors(newErrors);
+  }, [formData.oldPassword, formData.newPassword, formData.confirmPassword]);
 
-    return newErrors;
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  // Handle form submission
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    
-    const newErrors = validateForm();
-    
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+
+    if (Object.keys(errors).length > 0) {
       return;
     }
 
-    setIsSubmitting(true);
-    
-    try {
-      // Call backend API for password change
-      await authAPI.changePassword({
-        oldPassword: formData.oldPassword,
-        newPassword: formData.newPassword,
-      });
-      
-      setSuccessMessage('Password changed successfully! Redirecting to login...');
-      setFormData({
-        username: user?.username || '',
-        oldPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
-      setErrors({});
+    setLoading(true);
 
-      // Redirect to login after 2 seconds
-      setTimeout(() => {
-        // Clear auth data and redirect to login
-        tokenManager.removeToken();
-        localStorage.removeItem('authUser');
-        navigate('/');
-      }, 2000);
-      
-    } catch (error) {
-      console.error('Change password error:', error);
-      setErrors({ 
-        general: error.message || 'Failed to change password. Please try again.' 
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Simulate API call with setTimeout
+    setTimeout(() => {
+      // Mock password change
+      alert('Password changed successfully!');
+      setLoading(false);
+      navigate('/dashboard');
+    }, 1000);
   };
 
-  // Check password requirements for visual feedback
-  const getPasswordRequirementStatus = (password) => {
-    return {
-      length: password.length >= 5 && password.length <= 12,
-      uppercase: /[A-Z]/.test(password),
-      special: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)
-    };
+  const isFormValid = () => {
+    return (
+      formData.oldPassword &&
+      formData.newPassword &&
+      formData.confirmPassword &&
+      Object.keys(errors).length === 0
+    );
   };
-
-  const passwordStatus = getPasswordRequirementStatus(formData.newPassword);
 
   return (
     <div className="change-password-container">
-      {/* Back to Login Button */}
-      <button 
-        className="back-to-login-btn"
-        onClick={() => navigate('/')}
-        type="button"
-      >
-        <FaArrowLeft className="back-icon" />
-        Back to Login
-      </button>
-
-      {/* Success Message */}
-      {successMessage && (
-        <div className="success-message">
-          {successMessage}
-        </div>
-      )}
-
-      {/* Main Content */}
-      <div className="change-password-content">
-        {/* Page Title - Right Aligned */}
-        <h1 className="page-title">Change Password</h1>
-
-        {/* Form Card - Same as Registration */}
-        <FormCard
-          title=""
-          onSubmit={handleSubmit}
-          submitText={isSubmitting ? 'Saving...' : 'SAVE'}
-          className="change-password-form-card"
+      <div className="change-password-card">
+        <button 
+          className="back-arrow" 
+          onClick={() => navigate(-1)} 
+          aria-label="Go back"
         >
-          {/* General Error Message */}
-          {errors.general && (
-            <div className="general-error-message">
-              {errors.general}
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+        </button>
+
+        <div className="lock-icon">
+          <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            <circle cx="12" cy="16" r="1" fill="currentColor" />
+          </svg>
+        </div>
+
+        <h1 className="change-title">Change Password</h1>
+        <p className="change-subtitle">Enter your current and new password</p>
+
+        <form onSubmit={handleSubmit} className="change-form">
+          {errors.submit && (
+            <div className="error-alert">{errors.submit}</div>
+          )}
+
+          {/* Old Password */}
+          <div className="input-group">
+            <label htmlFor="oldPassword" className="input-label">Old Password</label>
+            <div className="input-with-icon">
+              <input
+                id="oldPassword"
+                type={showOldPassword ? 'text' : 'password'}
+                name="oldPassword"
+                placeholder="Enter old password"
+                value={formData.oldPassword}
+                onChange={handleChange}
+                className="input-field"
+                required
+                aria-label="Old password"
+              />
+              <button
+                type="button"
+                className="eye-icon-btn"
+                onClick={() => setShowOldPassword(!showOldPassword)}
+                aria-label={showOldPassword ? 'Hide old password' : 'Show old password'}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  {showOldPassword ? (
+                    <>
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </>
+                  ) : (
+                    <>
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </>
+                  )}
+                </svg>
+              </button>
             </div>
-          )}
-          
-          <FormField
-            label="Username"
-            name="username"
-            value={formData.username}
-            onChange={handleInputChange}
-            placeholder="Enter username"
-            icon={FaUser}
-            error={errors.username}
-            className={`${user ? 'readonly-field' : ''} custom-field-styling`}
-          />
+          </div>
 
-          <FormField
-            label="Old Password"
-            name="oldPassword"
-            value={formData.oldPassword}
-            onChange={handleInputChange}
-            placeholder="Enter current password"
-            error={errors.oldPassword}
-            showPassword={showOldPassword}
-            onTogglePassword={() => setShowOldPassword(!showOldPassword)}
-            className="custom-field-styling"
-          />
-
-          <FormField
-            label="New Password"
-            name="newPassword"
-            value={formData.newPassword}
-            onChange={handleInputChange}
-            placeholder="Enter new password"
-            error={errors.newPassword}
-            showPassword={showNewPassword}
-            onTogglePassword={() => setShowNewPassword(!showNewPassword)}
-            className="custom-field-styling"
-          />
-
-          {/* Password Requirements */}
-          {formData.newPassword && (
-            <div className="password-requirements">
-              <div className={`requirement ${passwordStatus.length ? 'valid' : ''}`}>
-                5–12 characters
-              </div>
-              <div className={`requirement ${passwordStatus.uppercase ? 'valid' : ''}`}>
-                Minimum 1 uppercase letter
-              </div>
-              <div className={`requirement ${passwordStatus.special ? 'valid' : ''}`}>
-                Minimum 1 special character
-              </div>
+          {/* New Password */}
+          <div className="input-group">
+            <label htmlFor="newPassword" className="input-label">New Password</label>
+            <div className="input-with-icon">
+              <input
+                id="newPassword"
+                type={showNewPassword ? 'text' : 'password'}
+                name="newPassword"
+                placeholder="Enter new password"
+                value={formData.newPassword}
+                onChange={handleChange}
+                className="input-field"
+                required
+                aria-label="New password"
+              />
+              <button
+                type="button"
+                className="eye-icon-btn"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  {showNewPassword ? (
+                    <>
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </>
+                  ) : (
+                    <>
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </>
+                  )}
+                </svg>
+              </button>
             </div>
-          )}
+            {errors.newPassword && (
+              <div className="validation-list">
+                {errors.newPassword.map((err, idx) => (
+                  <span key={idx} className="error-text">• {err}</span>
+                ))}
+              </div>
+            )}
+            {errors.samePassword && (
+              <span className="error-text">{errors.samePassword}</span>
+            )}
+          </div>
 
-          <FormField
-            label="Confirm Password"
-            name="confirmPassword"
-            value={formData.confirmPassword}
-            onChange={handleInputChange}
-            placeholder="Confirm new password"
-            error={errors.confirmPassword}
-            showPassword={showConfirmPassword}
-            onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
-            className="custom-field-styling"
-          />
+          {/* Confirm Password */}
+          <div className="input-group">
+            <label htmlFor="confirmPassword" className="input-label">Confirm Password</label>
+            <div className="input-with-icon">
+              <input
+                id="confirmPassword"
+                type={showConfirmPassword ? 'text' : 'password'}
+                name="confirmPassword"
+                placeholder="Re-enter new password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                onPaste={(e) => e.preventDefault()}
+                onCopy={(e) => e.preventDefault()}
+                onCut={(e) => e.preventDefault()}
+                className="input-field"
+                required
+                aria-label="Confirm password"
+              />
+              <button
+                type="button"
+                className="eye-icon-btn"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  {showConfirmPassword ? (
+                    <>
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </>
+                  ) : (
+                    <>
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </>
+                  )}
+                </svg>
+              </button>
+            </div>
+            {errors.confirmPassword && (
+              <span className="error-text">{errors.confirmPassword}</span>
+            )}
+          </div>
 
-          {/* Password Match Indicator */}
-          {formData.newPassword && formData.confirmPassword && formData.newPassword === formData.confirmPassword && (
-            <span className="success-check">✓ Passwords match</span>
-          )}
-        </FormCard>
+          <button 
+            type="submit" 
+            className="submit-button" 
+            disabled={!isFormValid() || loading}
+            aria-label="Confirm password change"
+          >
+            {loading ? 'CHANGING...' : 'CONFIRM CHANGE'}
+          </button>
+
+          <div className="back-to-login">
+            <button 
+              type="button" 
+              className="back-link" 
+              onClick={() => navigate('/')}
+              aria-label="Back to login page"
+            >
+              Back to Login
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

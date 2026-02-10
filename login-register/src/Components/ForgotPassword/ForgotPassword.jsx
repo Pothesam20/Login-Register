@@ -1,309 +1,201 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUser, FaPhone, FaArrowLeft, FaCheckCircle } from 'react-icons/fa';
-import { authAPI } from '../../services/api';
 import './ForgotPassword.css';
 
 const ForgotPassword = () => {
-  const navigate = useNavigate();
-  const [isSuccess, setIsSuccess] = useState(false);
-  
   const [formData, setFormData] = useState({
-    username: '',
+    email: '',
     phoneNumber: '',
     securityQuestion1: '',
     securityAnswer1: '',
     securityQuestion2: '',
-    securityAnswer2: '',
+    securityAnswer2: ''
   });
-  
-  const [errors, setErrors] = useState({});
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  // Predefined security questions
   const securityQuestions = [
-    { value: '', label: 'Select a security question' },
-    { value: 'favorite_color', label: 'What is your favorite color?' },
-    { value: 'pet_name', label: 'What is your pet name?' },
-    { value: 'birth_place', label: 'Where were you born?' },
-    { value: 'first_school', label: 'What was your first school name?' },
-    { value: 'mother_maiden', label: "What is your mother's maiden name?" },
-    { value: 'favorite_food', label: 'What is your favorite food?' },
+    'What is your nickname?',
+    'What is your favorite colour?',
+    'Where were you born?'
   ];
 
-  const handleInputChange = (e) => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
-    
-    // For phone number, only allow digits
-    if (name === 'phoneNumber') {
-      const numericValue = value.replace(/\D/g, '').slice(0, 10);
-      setFormData(prev => ({
-        ...prev,
-        [name]: numericValue,
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-      }));
-    }
-    
-    // Clear error for this field
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: '',
-      }));
-    }
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    setError('');
   };
 
-  const validateForm = () => {
-    const newErrors = {};
-    
-    if (!formData.username.trim()) {
-      newErrors.username = 'Username is required';
-    }
-    
-    if (!formData.phoneNumber.trim()) {
-      newErrors.phoneNumber = 'Phone number is required';
-    } else if (!/^\d{10}$/.test(formData.phoneNumber)) {
-      newErrors.phoneNumber = 'Phone number must be exactly 10 digits';
-    }
-    
-    if (!formData.securityQuestion1) {
-      newErrors.securityQuestion1 = 'Please select a security question';
-    }
-    if (!formData.securityAnswer1.trim()) {
-      newErrors.securityAnswer1 = 'Answer is required';
-    }
-    
-    if (!formData.securityQuestion2) {
-      newErrors.securityQuestion2 = 'Please select a security question';
-    }
-    if (!formData.securityAnswer2.trim()) {
-      newErrors.securityAnswer2 = 'Answer is required';
-    }
-    
-    if (formData.securityQuestion1 && formData.securityQuestion2 && 
-        formData.securityQuestion1 === formData.securityQuestion2) {
-      newErrors.securityQuestion2 = 'Please select different security questions';
-    }
-    
-    return newErrors;
-  };
-
-  const handleFormSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    const newErrors = validateForm();
     
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    if (formData.phoneNumber.length !== 10 || !/^\d+$/.test(formData.phoneNumber)) {
+      setError('Phone number must be exactly 10 digits');
       return;
     }
-    
-    try {
-      // Call backend API for forgot password
-      await authAPI.forgotPassword({
-        username: formData.username,
-        phoneNumber: formData.phoneNumber,
-        securityQuestion1: formData.securityQuestion1,
-        securityAnswer1: formData.securityAnswer1,
-        securityQuestion2: formData.securityQuestion2,
-        securityAnswer2: formData.securityAnswer2,
-      });
-      
-      setIsSuccess(true);
-      
-    } catch (error) {
-      console.error('Forgot password error:', error);
-      setErrors({ 
-        general: error.message || 'Failed to reset password. Please check your information and try again.' 
-      });
+
+    if (formData.securityQuestion1 === formData.securityQuestion2) {
+      setError('Please select different security questions');
+      return;
     }
+
+    if (!formData.email || !formData.securityAnswer1 || !formData.securityAnswer2) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+
+    // Simulate API call
+    setTimeout(() => {
+      alert('Password reset link has been sent to your email!');
+      setLoading(false);
+      navigate('/');
+    }, 1000);
   };
-
-  const handleBackToLogin = () => {
-    navigate('/');
-  };
-
-  const getAvailableQuestions = (currentQuestion) => {
-    return securityQuestions.filter(q => 
-      q.value === '' || 
-      q.value === currentQuestion || 
-      (q.value !== formData.securityQuestion1 && q.value !== formData.securityQuestion2)
-    );
-  };
-
-  const renderFormContent = () => (
-    <>
-      <h2>Forgot Password</h2>
-      <p className="form-subtitle">Forgot password</p>
-      
-      <form onSubmit={handleFormSubmit}>
-        {/* General Error Message */}
-        {errors.general && (
-          <div className="general-error-message">
-            {errors.general}
-          </div>
-        )}
-        
-        {/* Username Field */}
-        <div className="form-group">
-          <label htmlFor="username" className="field-label">Username</label>
-          <div className="input-container">
-            <FaUser className="input-icon" />
-            <input
-              id="username"
-              type="text"
-              name="username"
-              placeholder="Enter username"
-              value={formData.username}
-              onChange={handleInputChange}
-              className="form-input"
-            />
-          </div>
-          {errors.username && (
-            <span className="error-message">{errors.username}</span>
-          )}
-        </div>
-
-        {/* Phone Number Field */}
-        <div className="form-group">
-          <label htmlFor="phoneNumber" className="field-label">Phone Number</label>
-          <div className="input-container">
-            <FaPhone className="input-icon" />
-            <input
-              id="phoneNumber"
-              type="tel"
-              name="phoneNumber"
-              placeholder="10-digit phone number (numbers only)"
-              value={formData.phoneNumber}
-              onChange={handleInputChange}
-              maxLength="10"
-              className="form-input"
-            />
-          </div>
-          {errors.phoneNumber && (
-            <span className="error-message">{errors.phoneNumber}</span>
-          )}
-        </div>
-
-        {/* Security Questions Section */}
-        <div className="security-questions-section">
-          <h3 className="section-title">Security Questions</h3>
-          
-          {/* Security Question 1 Row */}
-          <div className="security-question-row">
-            <div className="question-column">
-              <label htmlFor="securityQuestion1">Question 1</label>
-              <select
-                id="securityQuestion1"
-                name="securityQuestion1"
-                value={formData.securityQuestion1}
-                onChange={handleInputChange}
-                className="security-select"
-              >
-                {getAvailableQuestions(formData.securityQuestion1).map(question => (
-                  <option key={question.value} value={question.value}>
-                    {question.label}
-                  </option>
-                ))}
-              </select>
-              {errors.securityQuestion1 && (
-                <span className="error-message">{errors.securityQuestion1}</span>
-              )}
-            </div>
-            
-            <div className="answer-column">
-              <label htmlFor="securityAnswer1">Answer 1</label>
-              <input
-                id="securityAnswer1"
-                type="text"
-                name="securityAnswer1"
-                placeholder="Enter your answer"
-                value={formData.securityAnswer1}
-                onChange={handleInputChange}
-                className="security-input"
-              />
-              {errors.securityAnswer1 && (
-                <span className="error-message">{errors.securityAnswer1}</span>
-              )}
-            </div>
-          </div>
-
-          {/* Security Question 2 Row */}
-          <div className="security-question-row">
-            <div className="question-column">
-              <label htmlFor="securityQuestion2">Question 2</label>
-              <select
-                id="securityQuestion2"
-                name="securityQuestion2"
-                value={formData.securityQuestion2}
-                onChange={handleInputChange}
-                className="security-select"
-              >
-                {getAvailableQuestions(formData.securityQuestion2).map(question => (
-                  <option key={question.value} value={question.value}>
-                    {question.label}
-                  </option>
-                ))}
-              </select>
-              {errors.securityQuestion2 && (
-                <span className="error-message">{errors.securityQuestion2}</span>
-              )}
-            </div>
-            
-            <div className="answer-column">
-              <label htmlFor="securityAnswer2">Answer 2</label>
-              <input
-                id="securityAnswer2"
-                type="text"
-                name="securityAnswer2"
-                placeholder="Enter your answer"
-                value={formData.securityAnswer2}
-                onChange={handleInputChange}
-                className="security-input"
-              />
-              {errors.securityAnswer2 && (
-                <span className="error-message">{errors.securityAnswer2}</span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Submit Button */}
-        <button type="submit" className="submit-btn">
-          Verify & Reset Password
-        </button>
-      </form>
-    </>
-  );
-
-  const renderSuccessContent = () => (
-    <>
-      <div className="success-icon">
-        <FaCheckCircle />
-      </div>
-      <h2>Verification Successful!</h2>
-      <p className="success-message">
-        Your password reset link has been sent to your registered email address.
-      </p>
-      <p className="success-subtext">
-        Please check your email and follow the instructions to reset your password.
-      </p>
-    </>
-  );
 
   return (
     <div className="forgot-password-container">
-      {/* Back Button */}
-      <button className="back-to-login-btn" onClick={handleBackToLogin}>
-        <FaArrowLeft className="back-icon" />
-        Back to Login
-      </button>
+      <div className="forgot-password-left">
+        <div className="left-overlay">
+          <h2 className="left-title">Forgot Password?</h2>
+          <p className="left-subtitle">Don't worry, we'll help you reset it</p>
+        </div>
+      </div>
 
-      {/* Main Content Card */}
-      <div className={`forgot-password-form-wrapper ${isSuccess ? 'success-wrapper' : ''}`}>
-        {isSuccess ? renderSuccessContent() : renderFormContent()}
+      <div className="forgot-password-right">
+        <div className="forgot-form-wrapper">
+          <h1 className="forgot-title">Reset Password</h1>
+          <p className="forgot-subtitle">Verify your details to reset your password</p>
+
+          <form onSubmit={handleSubmit} className="forgot-form">
+            {error && (
+              <div className="error-alert">{error}</div>
+            )}
+
+            <div className="input-group">
+              <label htmlFor="email" className="input-label">Email</label>
+              <input
+                id="email"
+                type="email"
+                name="email"
+                placeholder="Enter your email"
+                value={formData.email}
+                onChange={handleChange}
+                className="input-field"
+                required
+                aria-label="Email"
+              />
+            </div>
+
+            <div className="input-group">
+              <label htmlFor="phoneNumber" className="input-label">Phone Number</label>
+              <input
+                id="phoneNumber"
+                type="tel"
+                name="phoneNumber"
+                placeholder="Enter 10 digit phone number"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                className="input-field"
+                maxLength="10"
+                required
+                aria-label="Phone number"
+              />
+              <span className="helper-text">Must be 10 digit number</span>
+            </div>
+
+            <div className="security-section">
+              <h3 className="section-title">Security Verification</h3>
+
+              <div className="input-group">
+                <label htmlFor="securityQuestion1" className="input-label">Security Question 1</label>
+                <select
+                  id="securityQuestion1"
+                  name="securityQuestion1"
+                  value={formData.securityQuestion1}
+                  onChange={handleChange}
+                  className="input-field"
+                  required
+                  aria-label="Security question 1"
+                >
+                  <option value="">Select Question 1</option>
+                  {securityQuestions.map((q, idx) => (
+                    <option key={idx} value={q}>{q}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  name="securityAnswer1"
+                  placeholder="Your answer"
+                  value={formData.securityAnswer1}
+                  onChange={handleChange}
+                  className="input-field"
+                  required
+                  aria-label="Answer to security question 1"
+                />
+              </div>
+
+              <div className="input-group">
+                <label htmlFor="securityQuestion2" className="input-label">Security Question 2</label>
+                <select
+                  id="securityQuestion2"
+                  name="securityQuestion2"
+                  value={formData.securityQuestion2}
+                  onChange={handleChange}
+                  className="input-field"
+                  required
+                  aria-label="Security question 2"
+                >
+                  <option value="">Select Question 2</option>
+                  {securityQuestions
+                    .filter(q => q !== formData.securityQuestion1)
+                    .map((q, idx) => (
+                      <option key={idx} value={q}>{q}</option>
+                    ))}
+                </select>
+                <input
+                  type="text"
+                  name="securityAnswer2"
+                  placeholder="Your answer"
+                  value={formData.securityAnswer2}
+                  onChange={handleChange}
+                  className="input-field"
+                  required
+                  aria-label="Answer to security question 2"
+                />
+              </div>
+            </div>
+
+            <button 
+              type="submit" 
+              className="submit-button" 
+              disabled={loading}
+              aria-label="Submit password reset request"
+            >
+              {loading ? 'Submitting...' : 'Submit'}
+            </button>
+
+            <div className="back-to-login">
+              <button 
+                type="button" 
+                className="back-link" 
+                onClick={() => navigate('/')}
+                aria-label="Back to Login Page"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="19" y1="12" x2="5" y2="12" />
+                  <polyline points="12 19 5 12 12 5" />
+                </svg>
+                <span>Back to Login</span>
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
