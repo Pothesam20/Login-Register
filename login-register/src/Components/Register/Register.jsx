@@ -29,6 +29,21 @@ const Register = () => {
     'Where were you born?'
   ];
 
+  // Prevent browser back button
+  useEffect(() => {
+    window.history.pushState(null, '', window.location.href);
+    
+    const handlePopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
   const validatePassword = (password) => {
     const errors = [];
     if (password.length < 8) errors.push('Minimum 8 characters');
@@ -280,6 +295,9 @@ const Register = () => {
                   placeholder="Confirm Password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
+                  onPaste={(e) => e.preventDefault()}
+                  onCopy={(e) => e.preventDefault()}
+                  onCut={(e) => e.preventDefault()}
                   className={`input-field ${errors.confirmPassword ? 'input-error' : ''}`}
                   required
                 />

@@ -16,18 +16,45 @@ const Dashboard = () => {
     const storedUsername = localStorage.getItem('username');
     
     if (!token) {
-      navigate('/');
+      navigate('/', { replace: true });
       return;
     }
     
     setUsername(storedUsername || 'User');
+
+    // Prevent back button navigation to dashboard after logout
+    window.history.pushState(null, '', window.location.href);
+    
+    const handlePopState = (e) => {
+      const currentToken = localStorage.getItem('token');
+      if (!currentToken) {
+        // User has logged out, prevent going back
+        window.history.pushState(null, '', window.location.href);
+        navigate('/', { replace: true });
+      } else {
+        // User is still logged in, allow normal back navigation
+        window.history.pushState(null, '', window.location.href);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, [navigate]);
 
   const handleLogout = () => {
+    // Clear all session data
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     localStorage.removeItem('userId');
-    navigate('/');
+    
+    // Clear browser history to prevent back navigation
+    window.history.pushState(null, '', window.location.href);
+    
+    // Navigate to login and replace history
+    navigate('/', { replace: true });
   };
 
   const toggleSidebar = () => {

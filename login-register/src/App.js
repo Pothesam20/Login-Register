@@ -5,6 +5,7 @@ import ForgotPassword from './components/ForgotPassword/ForgotPassword';
 import ChangePassword from './components/ChangePassword/ChangePassword';
 import Dashboard from './components/Dashboard/Dashboard';
 import DashboardWithAPI from './components/Dashboard/DashboardWithAPI';
+import UserProfile from './components/UserProfile/UserProfile';
 import './App.css';
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/dashboard" element={<DashboardComponent />} />
+        <Route path="/user-profile" element={<UserProfile />} />
       </Routes>
     </Router>
   );

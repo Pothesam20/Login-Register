@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Login.css';
 
@@ -11,6 +11,21 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Prevent browser back button
+  useEffect(() => {
+    window.history.pushState(null, '', window.location.href);
+    
+    const handlePopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -58,7 +73,10 @@ const Login = () => {
           
           alert('Login successful!');
           setLoading(false);
-          navigate('/dashboard');
+          
+          // Clear history and navigate to dashboard
+          window.history.pushState(null, '', window.location.href);
+          navigate('/dashboard', { replace: true });
         } else {
           setError('Invalid email/username or password');
           setLoading(false);

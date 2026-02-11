@@ -6,8 +6,8 @@
 
 .register-left {
   flex: 1;
-  background: linear-gradient(135deg, rgba(240, 147, 251, 0.9) 0%, rgba(245, 87, 108, 0.9) 100%),
-              url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800"><rect fill="%23f093fb" width="1200" height="800"/><circle cx="300" cy="200" r="150" fill="rgba(255,255,255,0.1)"/><circle cx="800" cy="500" r="200" fill="rgba(255,255,255,0.1)"/><circle cx="500" cy="600" r="100" fill="rgba(255,255,255,0.1)"/></svg>');
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.9) 0%, rgba(5, 150, 105, 0.9) 100%),
+              url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800"><rect fill="%2310b981" width="1200" height="800"/><circle cx="300" cy="200" r="150" fill="rgba(255,255,255,0.1)"/><circle cx="800" cy="500" r="200" fill="rgba(255,255,255,0.1)"/><circle cx="500" cy="600" r="100" fill="rgba(255,255,255,0.1)"/></svg>');
   background-size: cover;
   background-position: center;
   display: flex;
@@ -116,9 +116,9 @@
 
 .input-field:focus {
   outline: none;
-  border-color: #f093fb;
+  border-color: #10b981;
   background: white;
-  box-shadow: 0 0 0 4px rgba(240, 147, 251, 0.1), 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1), 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .input-field::placeholder {
@@ -149,7 +149,7 @@
 }
 
 .eye-icon-btn:hover {
-  color: #f093fb;
+  color: #10b981;
 }
 
 .helper-text {
@@ -206,7 +206,7 @@
 .submit-button {
   width: 100%;
   padding: 16px;
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
   border: none;
   border-radius: 12px;
@@ -215,14 +215,14 @@
   cursor: pointer;
   transition: all 0.3s;
   margin-top: 12px;
-  box-shadow: 0 4px 12px rgba(240, 147, 251, 0.3);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .submit-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(240, 147, 251, 0.4);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
 }
 
 .submit-button:active:not(:disabled) {
@@ -244,7 +244,7 @@
 .back-link {
   background: none;
   border: none;
-  color: #f093fb;
+  color: #10b981;
   font-size: 14px;
   cursor: pointer;
   text-decoration: none;
@@ -253,7 +253,7 @@
 }
 
 .back-link:hover {
-  color: #f5576c;
+  color: #059669;
   text-decoration: underline;
 }
 
