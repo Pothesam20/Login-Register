@@ -1,0 +1,19 @@
+# Common
+**/node_modules/
+**/*.log
+**/*.tmp
+**/target/
+**/.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+
+# Environment
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

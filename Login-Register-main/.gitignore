@@ -1,0 +1,23 @@
+# Backend
+loginregister-backend/target/
+loginregister-backend/.mvn/
+loginregister-backend/mvnw
+loginregister-backend/mvnw.cmd
+
+# Frontend
+login-register/node_modules/
+login-register/build/
+login-register/.env.local
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
